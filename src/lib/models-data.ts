@@ -22,8 +22,8 @@ export const AUTO_PROFILES: ModelDefinition[] = [
   {
     id: "auto:best",
     name: "Auto: Best Capability",
-    provider: "freellmapi",
-    providerName: "FreeLLMAPI Smart Router",
+    provider: "thesun",
+    providerName: "The SUN Smart Router",
     description: "Intelligently routes to the highest-scoring model currently under quota and healthy.",
     contextWindow: 131072,
     tokensPerSecond: 320,
@@ -36,8 +36,8 @@ export const AUTO_PROFILES: ModelDefinition[] = [
   {
     id: "auto:fastest",
     name: "Auto: Lowest Latency",
-    provider: "freellmapi",
-    providerName: "FreeLLMAPI Smart Router",
+    provider: "thesun",
+    providerName: "The SUN Smart Router",
     description: "Routes to the fastest available inference engine (typically Cerebras or Groq at 800+ tok/s).",
     contextWindow: 131072,
     tokensPerSecond: 1850,
@@ -50,8 +50,8 @@ export const AUTO_PROFILES: ModelDefinition[] = [
   {
     id: "auto:coding",
     name: "Auto: Code Specialist",
-    provider: "freellmapi",
-    providerName: "FreeLLMAPI Smart Router",
+    provider: "thesun",
+    providerName: "The SUN Smart Router",
     description: "Routes to models with specialized programming benchmarks (Codestral, Qwen 2.5 Coder, Llama 3.3).",
     contextWindow: 131072,
     tokensPerSecond: 380,
@@ -64,8 +64,8 @@ export const AUTO_PROFILES: ModelDefinition[] = [
   {
     id: "auto:reasoning",
     name: "Auto: Deep Reasoning (R1 / Flash Thinking)",
-    provider: "freellmapi",
-    providerName: "FreeLLMAPI Smart Router",
+    provider: "thesun",
+    providerName: "The SUN Smart Router",
     description: "Chain-of-thought and mathematical reasoning models (DeepSeek-R1 Distill, Gemini Flash Thinking).",
     contextWindow: 131072,
     tokensPerSecond: 240,
@@ -78,8 +78,8 @@ export const AUTO_PROFILES: ModelDefinition[] = [
   {
     id: "auto:vision",
     name: "Auto: Multimodal & Vision",
-    provider: "freellmapi",
-    providerName: "FreeLLMAPI Smart Router",
+    provider: "thesun",
+    providerName: "The SUN Smart Router",
     description: "Directs visual inputs and OCR tasks to Gemini 2.5 Flash, Pixtral 12B, or Llama 3.2 Vision.",
     contextWindow: 1048576,
     tokensPerSecond: 260,
@@ -406,7 +406,7 @@ export const PROVIDERS_INFO = [
   {
     id: "openrouter",
     name: "OpenRouter",
-    logoColor: "from-violet-500 to-purple-600",
+    logoColor: "from-violet-500 to-violet-600",
     description: "Aggregator hosting dozens of free open-source models with community credits.",
     freeMonthlyTokens: "600 Million",
     signupUrl: "https://openrouter.ai/keys",
@@ -456,7 +456,7 @@ export const PROVIDERS_INFO = [
   {
     id: "zhipu",
     name: "Zhipu AI (GLM)",
-    logoColor: "from-cyan-500 to-blue-600",
+    logoColor: "from-indigo-500 to-blue-600",
     description: "Unlimited free tier for GLM-4 Flash model with high speed and tool support.",
     freeMonthlyTokens: "150 Million",
     signupUrl: "https://open.bigmodel.cn",

@@ -1,17 +1,33 @@
 import type { Metadata } from "next";
 import { ReactNode } from "react";
+import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/Toast";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { AdminAccessGate } from "@/components/AdminAccessGate";
+
+const plexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-plex-sans",
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-plex-mono",
+});
 
 export const metadata: Metadata = {
-  title: "FreeLLMAPI - 7.4 Billion Free Tokens / Month behind One /v1 Endpoint",
+  title: "The SUN — Token Emulator | One /v1 Endpoint, 7.4 Billion Free Tokens / Month",
   description:
-    "Aggregate free tiers from 34 AI providers (Groq, Cerebras, Google Gemini, Mistral, OpenRouter). One OpenAI-compatible endpoint with smart routing, automatic failover, and encrypted keys.",
+    "The SUN is an OpenAI-compatible AI gateway with smart model routing, provider key management, and an authenticated admin dashboard.",
   keywords: [
-    "Free LLM API",
+    "The SUN",
+    "Token Emulator",
     "OpenAI compatible API",
+    "Admin authentication",
     "Groq",
     "Cerebras",
     "Gemini",
@@ -28,13 +44,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen bg-[#07090e] text-slate-100 antialiased selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-between">
-        <ToastProvider>
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </ToastProvider>
+    <html lang="en" className={`dark bg-background ${plexSans.variable} ${plexMono.variable}`}>
+      <body className="min-h-screen bg-background font-sans text-foreground antialiased selection:bg-gold-500/30 selection:text-gold-200 flex flex-col justify-between">
+        <AdminAccessGate>
+          <ToastProvider>
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </ToastProvider>
+        </AdminAccessGate>
       </body>
     </html>
   );

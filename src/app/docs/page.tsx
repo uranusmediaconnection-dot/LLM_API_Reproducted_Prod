@@ -26,7 +26,7 @@ export default function DocsPage() {
 
   const curlChatExample = `curl -X POST http://localhost:3000/v1/chat/completions \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer freellmapi-live-sec_9a8f2e1b4c7d03a5" \\
+  -H "Authorization: Bearer thesun-live-..." \\
   -d '{
     "model": "auto:best",
     "messages": [
@@ -40,10 +40,10 @@ export default function DocsPage() {
 
   const pythonChatExample = `from openai import OpenAI
 
-# Initialize standard OpenAI client pointing to FreeLLMAPI
+# Initialize standard OpenAI client pointing to The SUN
 client = OpenAI(
     base_url="http://localhost:3000/v1",
-    api_key="freellmapi-live-sec_9a8f2e1b4c7d03a5"
+    api_key="thesun-live-..."
 )
 
 # Call any enrolled free model or auto profile
@@ -64,7 +64,7 @@ print(f"Total tokens: {response.usage.total_tokens}")`;
 
 const openai = new OpenAI({
   baseURL: "http://localhost:3000/v1",
-  apiKey: "freellmapi-live-sec_9a8f2e1b4c7d03a5",
+  apiKey: "thesun-live-...",
 });
 
 async function run() {
@@ -83,7 +83,7 @@ run();`;
 
   const claudeCodeExample = `# Configure Claude Code CLI to route through your free pool
 export ANTHROPIC_BASE_URL="http://localhost:3000/v1"
-export ANTHROPIC_API_KEY="freellmapi-live-sec_9a8f2e1b4c7d03a5"
+export ANTHROPIC_API_KEY="thesun-live-..."
 
 # Run claude directly
 claude`;
@@ -92,7 +92,7 @@ claude`;
 
 llm = ChatOpenAI(
     base_url="http://localhost:3000/v1",
-    api_key="freellmapi-live-sec_9a8f2e1b4c7d03a5",
+    api_key="thesun-live-...",
     model="auto:best",
     temperature=0.7
 )
@@ -191,10 +191,10 @@ print(response.content)`;
         {/* Sidebar Nav */}
         <aside className="w-full md:w-64 shrink-0 space-y-6">
           <div className="space-y-1">
-            <h3 className="text-xs uppercase tracking-wider font-mono text-cyan-400 font-semibold">
+            <h3 className="text-xs uppercase tracking-wider font-mono text-gold-400 font-semibold">
               Documentation
             </h3>
-            <p className="text-xs text-slate-400">OpenAI Compatible Gateway</p>
+            <p className="text-xs text-zinc-400">OpenAI Compatible Gateway</p>
           </div>
 
           <nav className="space-y-1">
@@ -217,8 +217,8 @@ print(response.content)`;
                 }}
                 className={`w-full text-left px-3 py-2 text-xs rounded-md font-medium transition-colors cursor-pointer flex items-center justify-between ${
                   activeSection === sec.id
-                    ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+                    ? "bg-gold-500/10 text-gold-400 border border-gold-500/20"
+                    : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"
                 }`}
               >
                 <span>{sec.label}</span>
@@ -227,14 +227,14 @@ print(response.content)`;
             ))}
           </nav>
 
-          <div className="p-3 rounded-lg bg-[#0b0f19] border border-slate-800 text-xs space-y-2">
+          <div className="p-3 rounded-lg bg-card border border-zinc-800 text-xs space-y-2">
             <div className="flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px]">
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
               <span>Gateway Status: Normal</span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-zinc-400">
               Target base URL: <br />
-              <code className="text-cyan-300 font-mono">http://localhost:3000/v1</code>
+              <code className="text-gold-300 font-mono">http://localhost:3000/v1</code>
             </p>
           </div>
         </aside>
@@ -243,29 +243,29 @@ print(response.content)`;
         <main className="flex-1 space-y-16">
           {/* Section: Overview */}
           <section id="overview" className="space-y-4">
-            <div className="border-b border-slate-800 pb-4">
-              <h2 className="text-2xl font-bold text-white">Overview & Quickstart</h2>
-              <p className="text-sm text-slate-400 mt-1">
-                FreeLLMAPI is a single, zero-friction gateway that collapses 34 free LLM provider tiers (7.4 billion free tokens/month) behind an OpenAI-standard wire format.
+            <div className="border-b border-zinc-800 pb-4">
+              <h2 className="text-2xl font-bold text-foreground">Overview & Quickstart</h2>
+              <p className="text-sm text-zinc-400 mt-1">
+                The SUN is a single, zero-friction gateway that collapses 34 free LLM provider tiers (7.4 billion free tokens/month) behind an OpenAI-standard wire format.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl border border-slate-800 bg-[#0b0f19]">
-                <div className="text-xs text-slate-400">Base URL</div>
-                <div className="font-mono text-cyan-300 text-xs mt-1 font-semibold">
+              <div className="p-4 rounded-xl border border-zinc-800 bg-card">
+                <div className="text-xs text-zinc-400">Base URL</div>
+                <div className="font-mono text-gold-300 text-xs mt-1 font-semibold">
                   http://localhost:3000/v1
                 </div>
               </div>
-              <div className="p-4 rounded-xl border border-slate-800 bg-[#0b0f19]">
-                <div className="text-xs text-slate-400">Format Standard</div>
+              <div className="p-4 rounded-xl border border-zinc-800 bg-card">
+                <div className="text-xs text-zinc-400">Format Standard</div>
                 <div className="font-mono text-emerald-300 text-xs mt-1 font-semibold">
                   OpenAI Wire Specification
                 </div>
               </div>
-              <div className="p-4 rounded-xl border border-slate-800 bg-[#0b0f19]">
-                <div className="text-xs text-slate-400">Available Endpoints</div>
-                <div className="font-mono text-purple-300 text-xs mt-1 font-semibold">
+              <div className="p-4 rounded-xl border border-zinc-800 bg-card">
+                <div className="text-xs text-zinc-400">Available Endpoints</div>
+                <div className="font-mono text-gold-300 text-xs mt-1 font-semibold">
                   635 Free Endpoints
                 </div>
               </div>
@@ -274,37 +274,37 @@ print(response.content)`;
 
           {/* Section: Authentication */}
           <section id="authentication" className="space-y-4">
-            <div className="border-b border-slate-800 pb-4">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Key className="w-5 h-5 text-cyan-400" />
+            <div className="border-b border-zinc-800 pb-4">
+              <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                <Key className="w-5 h-5 text-gold-400" />
                 <span>Authentication</span>
               </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Pass your unified FreeLLMAPI token in the standard HTTP <code className="text-cyan-300">Authorization</code> header.
+              <p className="text-xs text-zinc-400 mt-1">
+                Pass your unified The SUN token in the standard HTTP <code className="text-gold-300">Authorization</code> header.
               </p>
             </div>
 
             <CodeBlock
               language="bash"
               filename="Authorization Header"
-              code={`Authorization: Bearer freellmapi-live-sec_9a8f2e1b4c7d03a5`}
+              code={`Authorization: Bearer thesun-live-...`}
             />
 
-            <p className="text-xs text-slate-400">
-              Provider keys (e.g. your individual Groq or Gemini keys) are securely stored and encrypted with AES-256-GCM. Your application only interacts with the unified bearer token.
+            <p className="text-xs text-zinc-400">
+              Provider keys are managed through the authenticated admin dashboard and are never returned in plaintext by its APIs. The database provider controls encryption at rest; this application does not add a separate encryption layer.
             </p>
           </section>
 
           {/* Section: Chat Completions */}
           <section id="chat-completions" className="space-y-6">
-            <div className="border-b border-slate-800 pb-4">
+            <div className="border-b border-zinc-800 pb-4">
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono text-xs font-bold">
                   POST
                 </span>
-                <code className="text-lg font-bold text-white font-mono">/v1/chat/completions</code>
+                <code className="text-lg font-bold text-foreground font-mono">/v1/chat/completions</code>
               </div>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-zinc-400 mt-1">
                 Creates a model response for the given chat conversation. Supports real-time streaming, function tools, and fallback chains.
               </p>
             </div>
@@ -322,10 +322,10 @@ print(response.content)`;
 
             {/* Request Schema Table */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-white">Request Body Parameters</h3>
-              <div className="rounded-xl border border-slate-800 overflow-x-auto bg-[#0b0f19]">
+              <h3 className="text-sm font-semibold text-foreground">Request Body Parameters</h3>
+              <div className="rounded-xl border border-zinc-800 overflow-x-auto bg-card">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-[#080c14] border-b border-slate-800 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                  <thead className="bg-secondary border-b border-zinc-800 text-zinc-400 uppercase tracking-wider font-mono text-[10px]">
                     <tr>
                       <th className="p-3">Parameter</th>
                       <th className="p-3">Type</th>
@@ -334,24 +334,24 @@ print(response.content)`;
                       <th className="p-3">Description</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/80 text-slate-300">
+                  <tbody className="divide-y divide-zinc-800/80 text-zinc-300">
                     {requestSchema.map((item) => (
-                      <tr key={item.param} className="hover:bg-slate-800/20">
-                        <td className="p-3 font-mono text-cyan-300 font-semibold">{item.param}</td>
-                        <td className="p-3 font-mono text-purple-300">{item.type}</td>
+                      <tr key={item.param} className="hover:bg-zinc-800/20">
+                        <td className="p-3 font-mono text-gold-300 font-semibold">{item.param}</td>
+                        <td className="p-3 font-mono text-gold-300">{item.type}</td>
                         <td className="p-3 font-medium">
                           <span
                             className={`px-1.5 py-0.5 rounded text-[10px] ${
                               item.required === "Required"
                                 ? "bg-rose-950/80 text-rose-300 border border-rose-800/50"
-                                : "bg-slate-800 text-slate-400"
+                                : "bg-zinc-800 text-zinc-400"
                             }`}
                           >
                             {item.required}
                           </span>
                         </td>
-                        <td className="p-3 font-mono text-slate-400">{item.default}</td>
-                        <td className="p-3 text-slate-400">{item.description}</td>
+                        <td className="p-3 font-mono text-zinc-400">{item.default}</td>
+                        <td className="p-3 text-zinc-400">{item.description}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -361,22 +361,22 @@ print(response.content)`;
 
             {/* Response Schema Table */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-white">Response JSON Schema</h3>
-              <div className="rounded-xl border border-slate-800 overflow-x-auto bg-[#0b0f19]">
+              <h3 className="text-sm font-semibold text-foreground">Response JSON Schema</h3>
+              <div className="rounded-xl border border-zinc-800 overflow-x-auto bg-card">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-[#080c14] border-b border-slate-800 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                  <thead className="bg-secondary border-b border-zinc-800 text-zinc-400 uppercase tracking-wider font-mono text-[10px]">
                     <tr>
                       <th className="p-3">Field</th>
                       <th className="p-3">Type</th>
                       <th className="p-3">Description</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/80 text-slate-300">
+                  <tbody className="divide-y divide-zinc-800/80 text-zinc-300">
                     {responseSchema.map((item) => (
-                      <tr key={item.field} className="hover:bg-slate-800/20">
-                        <td className="p-3 font-mono text-cyan-300 font-semibold">{item.field}</td>
-                        <td className="p-3 font-mono text-purple-300">{item.type}</td>
-                        <td className="p-3 text-slate-400">{item.description}</td>
+                      <tr key={item.field} className="hover:bg-zinc-800/20">
+                        <td className="p-3 font-mono text-gold-300 font-semibold">{item.field}</td>
+                        <td className="p-3 font-mono text-gold-300">{item.type}</td>
+                        <td className="p-3 text-zinc-400">{item.description}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -387,14 +387,14 @@ print(response.content)`;
 
           {/* Section: GET /v1/models */}
           <section id="models-endpoint" className="space-y-4">
-            <div className="border-b border-slate-800 pb-4">
+            <div className="border-b border-zinc-800 pb-4">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-800 font-mono text-xs font-bold">
+                <span className="px-2 py-0.5 rounded bg-gold-950 text-gold-400 border border-gold-800 font-mono text-xs font-bold">
                   GET
                 </span>
-                <code className="text-lg font-bold text-white font-mono">/v1/models</code>
+                <code className="text-lg font-bold text-foreground font-mono">/v1/models</code>
               </div>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-zinc-400 mt-1">
                 Lists all 635 free endpoints, auto profiles, token speed ratings, and free quota metadata.
               </p>
             </div>
@@ -403,20 +403,20 @@ print(response.content)`;
               language="bash"
               filename="cURL"
               code={`curl http://localhost:3000/v1/models \\
-  -H "Authorization: Bearer freellmapi-live-sec_9a8f2e1b4c7d03a5"`}
+  -H "Authorization: Bearer thesun-live-..."`}
             />
           </section>
 
           {/* Section: Claude Messages */}
           <section id="claude-messages" className="space-y-4">
-            <div className="border-b border-slate-800 pb-4">
+            <div className="border-b border-zinc-800 pb-4">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800 font-mono text-xs font-bold">
+                <span className="px-2 py-0.5 rounded bg-gold-950 text-gold-400 border border-gold-800 font-mono text-xs font-bold">
                   POST
                 </span>
-                <code className="text-lg font-bold text-white font-mono">/v1/messages</code>
+                <code className="text-lg font-bold text-foreground font-mono">/v1/messages</code>
               </div>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-zinc-400 mt-1">
                 Anthropic wire format compatibility for running <strong>Claude Code CLI</strong> directly against your free pool.
               </p>
             </div>
@@ -426,36 +426,36 @@ print(response.content)`;
 
           {/* Section: Agent Integrations */}
           <section id="agent-integrations" className="space-y-4">
-            <div className="border-b border-slate-800 pb-4">
-              <h2 className="text-xl font-bold text-white">Agent & IDE Configuration</h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Configure your favorite AI editors to use FreeLLMAPI as a backend.
+            <div className="border-b border-zinc-800 pb-4">
+              <h2 className="text-xl font-bold text-foreground">Agent & IDE Configuration</h2>
+              <p className="text-xs text-zinc-400 mt-1">
+                Configure your favorite AI editors to use The SUN as a backend.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Cursor */}
-              <div className="p-4 rounded-xl border border-slate-800 bg-[#0b0f19] space-y-2">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+              <div className="p-4 rounded-xl border border-zinc-800 bg-card space-y-2">
+                <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
                   <span>Cursor IDE</span>
                 </h4>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-zinc-400">
                   Go to <em>Cursor Settings &gt; Models</em>. Override OpenAI Base URL:
                 </p>
-                <div className="p-2.5 rounded bg-[#07090e] border border-slate-800/80 font-mono text-xs text-cyan-300">
+                <div className="p-2.5 rounded bg-background border border-zinc-800/80 font-mono text-xs text-gold-300">
                   http://localhost:3000/v1
                 </div>
               </div>
 
               {/* Continue.dev */}
-              <div className="p-4 rounded-xl border border-slate-800 bg-[#0b0f19] space-y-2">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+              <div className="p-4 rounded-xl border border-zinc-800 bg-card space-y-2">
+                <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
                   <span>Continue.dev</span>
                 </h4>
-                <p className="text-xs text-slate-400">
-                  In <code className="text-slate-300">config.json</code>, set provider to <code className="text-slate-300">openai</code> with custom apiBase:
+                <p className="text-xs text-zinc-400">
+                  In <code className="text-zinc-300">config.json</code>, set provider to <code className="text-zinc-300">openai</code> with custom apiBase:
                 </p>
-                <div className="p-2.5 rounded bg-[#07090e] border border-slate-800/80 font-mono text-xs text-cyan-300">
+                <div className="p-2.5 rounded bg-background border border-zinc-800/80 font-mono text-xs text-gold-300">
                   &quot;apiBase&quot;: &quot;http://localhost:3000/v1&quot;
                 </div>
               </div>
@@ -464,9 +464,9 @@ print(response.content)`;
 
           {/* Section: Provider Keys Guide */}
           <section id="provider-keys" className="space-y-4">
-            <div className="border-b border-slate-800 pb-4">
-              <h2 className="text-xl font-bold text-white">Getting Free API Keys (60 Seconds Each)</h2>
-              <p className="text-xs text-slate-400 mt-1">
+            <div className="border-b border-zinc-800 pb-4">
+              <h2 className="text-xl font-bold text-foreground">Getting Free API Keys (60 Seconds Each)</h2>
+              <p className="text-xs text-zinc-400 mt-1">
                 Every listed AI provider provides a generous permanent free tier with no credit card required.
               </p>
             </div>
@@ -475,25 +475,25 @@ print(response.content)`;
               {PROVIDERS_INFO.map((prov) => (
                 <div
                   key={prov.id}
-                  className="p-4 rounded-xl border border-slate-800 bg-[#0b0f19] flex flex-col justify-between space-y-2"
+                  className="p-4 rounded-xl border border-zinc-800 bg-card flex flex-col justify-between space-y-2"
                 >
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm text-white">{prov.name}</span>
+                      <span className="font-bold text-sm text-foreground">{prov.name}</span>
                       <a
                         href={prov.signupUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300 font-medium"
+                        className="flex items-center gap-1 text-[11px] text-gold-400 hover:text-gold-300 font-medium"
                       >
                         <span>Get Free Key</span>
                         <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">{prov.description}</p>
+                    <p className="text-xs text-zinc-400 mt-1">{prov.description}</p>
                   </div>
-                  <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono">
-                    <span className="text-slate-500">Key Prefix: {prov.keyPrefix}</span>
+                  <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between text-[11px] font-mono">
+                    <span className="text-zinc-500">Key Prefix: {prov.keyPrefix}</span>
                     <span className="text-emerald-400">{prov.freeMonthlyTokens} tok/mo</span>
                   </div>
                 </div>

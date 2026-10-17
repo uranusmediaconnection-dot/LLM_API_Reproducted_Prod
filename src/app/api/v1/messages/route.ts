@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { resolveModelRoute } from "@/lib/router-engine";
+import { resolveModelRouteWithConfig } from "@/lib/resolver-db";
 import { executeChatCompletion } from "@/lib/provider-dispatch";
+import { authenticateUnifiedApiRequest } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,12 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
+  const authenticationError = await authenticateUnifiedApiRequest(req, {
+    format: "anthropic",
+    corsHeaders,
+  });
+  if (authenticationError) return authenticationError;
+
   try {
     const body = await req.json();
     const { model, messages, system, max_tokens, stream } = body;
@@ -32,7 +39,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const route = resolveModelRoute(model || "auto:best");
+    const route = await resolveModelRouteWithConfig(model || "auto:best");
     const clientIp = req.headers.get("x-forwarded-for") || "127.0.0.1";
 
     const res = await executeChatCompletion(
@@ -47,6 +54,19 @@ export async function POST(req: NextRequest) {
     );
 
     const data: any = await res.json();
+    if (!res.ok) {
+      return Response.json(
+        {
+          type: "error",
+          error: {
+            type: data?.error?.code || "api_error",
+            message: data?.error?.message || "The upstream model request failed.",
+          },
+        },
+        { status: res.status, headers: corsHeaders }
+      );
+    }
+
     const responseText = data.choices?.[0]?.message?.content || "";
 
     const anthropicFormat = {

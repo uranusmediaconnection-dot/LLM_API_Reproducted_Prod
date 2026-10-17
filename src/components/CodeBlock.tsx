@@ -37,20 +37,23 @@ export function CodeBlock({
   };
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#0b0f19] overflow-hidden shadow-2xl font-mono text-sm">
+    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-xl font-mono text-sm">
       {/* Top Header / Tabs */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-[#080c14] border-b border-slate-800/80">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-secondary/70 border-b border-border/80">
         <div className="flex items-center gap-2 overflow-x-auto">
           {tabs ? (
-            <div className="flex items-center gap-1">
+            <div role="tablist" aria-label="Code examples" className="flex items-center gap-1">
               {tabs.map((tab, idx) => (
                 <button
                   key={tab.label}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === idx}
                   onClick={() => setActiveTab(idx)}
                   className={`px-3 py-1 text-xs rounded-md transition-colors ${
                     activeTab === idx
-                      ? "bg-cyan-500/15 text-cyan-400 font-semibold border border-cyan-500/30"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+                      ? "bg-gold-500/15 text-gold-300 font-semibold border border-gold-500/30"
+                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"
                   }`}
                 >
                   {tab.label}
@@ -58,16 +61,18 @@ export function CodeBlock({
               ))}
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+            <div className="flex items-center gap-2 text-xs text-zinc-400">
+              <Terminal className="w-3.5 h-3.5 text-gold-400" />
               <span>{filename || currentLang}</span>
             </div>
           )}
         </div>
 
         <button
+          type="button"
           onClick={handleCopy}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-700/60 rounded-md border border-slate-700/50 transition-all cursor-pointer"
+          aria-label={copied ? "Code copied" : "Copy code example"}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-zinc-300 hover:text-gold-100 bg-secondary/80 hover:bg-secondary rounded-lg border border-border transition-colors cursor-pointer"
         >
           {copied ? (
             <>
@@ -76,7 +81,7 @@ export function CodeBlock({
             </>
           ) : (
             <>
-              <Copy className="w-3.5 h-3.5 text-slate-400" />
+              <Copy className="w-3.5 h-3.5 text-zinc-400" />
               <span>Copy</span>
             </>
           )}
@@ -84,7 +89,7 @@ export function CodeBlock({
       </div>
 
       {/* Code Area */}
-      <div className="p-4 overflow-x-auto text-xs leading-relaxed text-slate-300 select-text">
+      <div className="p-4 overflow-x-auto text-xs leading-relaxed text-zinc-300 select-text">
         <pre className="whitespace-pre">{currentCode}</pre>
       </div>
     </div>

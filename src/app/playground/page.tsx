@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import useSWR from "swr";
 import {
   Send,
   Terminal,
@@ -37,8 +38,18 @@ interface Message {
   isStreaming?: boolean;
 }
 
+type KeysPayload = { unifiedKey?: { key?: string } };
+
+async function fetchKeys(url: string): Promise<KeysPayload> {
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) throw new Error("Could not load the unified API key");
+  return response.json();
+}
+
 export default function PlaygroundPage() {
   const { toast } = useToast();
+  const { data: keysData } = useSWR<KeysPayload>("/api/keys", fetchKeys);
+  const unifiedKey = keysData?.unifiedKey?.key ?? "";
 
   // Model & Router State
   const [selectedModel, setSelectedModel] = useState<string>("auto:best");
@@ -48,7 +59,7 @@ export default function PlaygroundPage() {
   const [topP, setTopP] = useState<number>(1.0);
   const [isStreaming, setIsStreaming] = useState<boolean>(true);
   const [systemPrompt, setSystemPrompt] = useState<string>(
-    "You are a helpful, expert AI assistant running via FreeLLMAPI smart router. Be concise, accurate, and format code clearly with syntax tags."
+    "You are a helpful, expert AI assistant running via The SUN smart router. Be concise, accurate, and format code clearly with syntax tags."
   );
   const [showSettingsMobile, setShowSettingsMobile] = useState<boolean>(false);
 
@@ -59,8 +70,8 @@ export default function PlaygroundPage() {
       id: "welcome-1",
       role: "assistant",
       content:
-        "Welcome to the **FreeLLMAPI Interactive Playground**! 🚀\n\nI am currently routed through your unified `/v1` gateway. You can test any model across 34 free providers, toggle between streaming or non-streaming, test system prompts, or inspect fallback chains in real time.\n\nTry asking me a coding question, a math problem, or click one of the quick prompts below!",
-      provider: "freellmapi",
+        "Welcome to The SUN Interactive Playground. Configure a supported provider key on the Keys page to send live requests through the unified `/v1` gateway. You can then try streaming, system prompts, and the available model routes.",
+      provider: "thesun",
       model: "auto:best",
       latencyMs: 120,
       tokensCount: 78,
@@ -83,6 +94,10 @@ export default function PlaygroundPage() {
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputMessage).trim();
     if (!text || isLoading) return;
+    if (!unifiedKey) {
+      toast("Unified API key is not available yet", "error");
+      return;
+    }
 
     setInputMessage("");
 
@@ -126,7 +141,7 @@ export default function PlaygroundPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer freellmapi-playground-session",
+          Authorization: `Bearer ${unifiedKey}`,
         },
         body: JSON.stringify({
           model: selectedModel,
@@ -139,8 +154,8 @@ export default function PlaygroundPage() {
         signal: controller.signal,
       });
 
-      const providerHeader = res.headers.get("x-freellmapi-provider") || activeModelDef.provider;
-      const modelHeader = res.headers.get("x-freellmapi-model") || selectedModel;
+      const providerHeader = res.headers.get("x-thesun-provider") || activeModelDef.provider;
+      const modelHeader = res.headers.get("x-thesun-model") || selectedModel;
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
@@ -281,7 +296,7 @@ export default function PlaygroundPage() {
         id: "cleared-1",
         role: "assistant",
         content: "Chat history cleared. Select a model or auto profile to begin testing!",
-        provider: "freellmapi",
+        provider: "thesun",
         model: selectedModel,
       },
     ]);
@@ -297,7 +312,7 @@ export default function PlaygroundPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `freellmapi-chat-${Date.now()}.md`;
+      a.download = `thesun-chat-${Date.now()}.md`;
       a.click();
     } else {
       const jsonContent = JSON.stringify(messages, null, 2);
@@ -305,7 +320,7 @@ export default function PlaygroundPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `freellmapi-chat-${Date.now()}.json`;
+      a.download = `thesun-chat-${Date.now()}.json`;
       a.click();
     }
     toast(`Exported chat as ${format.toUpperCase()}`, "success");
@@ -342,19 +357,19 @@ export default function PlaygroundPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 h-[calc(100vh-4.5rem)] flex flex-col">
       {/* Top Header / Bar */}
-      <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+      <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gold-500/10 border border-gold-500/20 text-gold-400">
             <Terminal className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-white flex items-center gap-2">
+            <h1 className="text-base font-bold text-foreground flex items-center gap-2">
               <span>AI Interactive Playground</span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-800/40">
                 Live Gateway
               </span>
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-zinc-400">
               Direct live inference testbed with real-time token streaming and provider telemetry
             </p>
           </div>
@@ -363,23 +378,23 @@ export default function PlaygroundPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleExportChat("markdown")}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 transition-colors cursor-pointer"
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs text-zinc-300 transition-colors cursor-pointer"
             title="Export chat as Markdown"
           >
-            <Download className="w-3.5 h-3.5 text-slate-400" />
+            <Download className="w-3.5 h-3.5 text-zinc-400" />
             <span>Export</span>
           </button>
           <button
             onClick={handleClearChat}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs text-slate-300 hover:text-rose-300 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs text-zinc-300 hover:text-rose-300 transition-colors cursor-pointer"
             title="Clear Chat"
           >
-            <Trash2 className="w-3.5 h-3.5 text-slate-400" />
+            <Trash2 className="w-3.5 h-3.5 text-zinc-400" />
             <span className="hidden sm:inline">Clear</span>
           </button>
           <button
             onClick={() => setShowSettingsMobile(!showSettingsMobile)}
-            className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-cyan-950/60 border border-cyan-800/40 text-xs text-cyan-400"
+            className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-gold-950/60 border border-gold-800/40 text-xs text-gold-400"
           >
             <Sliders className="w-3.5 h-3.5" />
             <span>Parameters</span>
@@ -390,17 +405,17 @@ export default function PlaygroundPage() {
       {/* Main Workspace Grid */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 pt-4 overflow-hidden">
         {/* Left Column: Chat Area */}
-        <div className="lg:col-span-8 flex flex-col h-full bg-[#0b0f19] rounded-xl border border-slate-800 overflow-hidden shadow-xl">
+        <div className="lg:col-span-8 flex flex-col h-full bg-card rounded-xl border border-zinc-800 overflow-hidden shadow-xl">
           {/* Quick Model Header on Mobile/Top */}
-          <div className="px-4 py-2.5 bg-[#080c14] border-b border-slate-800/80 flex items-center justify-between text-xs">
+          <div className="px-4 py-2.5 bg-secondary border-b border-zinc-800/80 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              <span className="text-slate-400">Active Model:</span>
-              <span className="font-mono text-cyan-300 font-semibold">{selectedModel}</span>
-              <span className="text-slate-500">•</span>
-              <span className="text-slate-400 capitalize">{activeModelDef.provider}</span>
+              <span className="text-zinc-400">Active Model:</span>
+              <span className="font-mono text-gold-300 font-semibold">{selectedModel}</span>
+              <span className="text-zinc-500">•</span>
+              <span className="text-zinc-400 capitalize">{activeModelDef.provider}</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+              <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 <span>{isStreaming ? "Streaming Mode" : "Standard Mode"}</span>
               </div>
@@ -419,18 +434,18 @@ export default function PlaygroundPage() {
                 <div
                   className={`max-w-[88%] rounded-xl p-4 text-xs leading-relaxed ${
                     msg.role === "user"
-                      ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-950"
-                      : "bg-[#0f1422] border border-slate-800/90 text-slate-200 shadow-lg"
+                      ? "bg-gold-500 text-zinc-950 shadow-md shadow-gold-950"
+                      : "bg-secondary border border-zinc-800/90 text-zinc-200 shadow-lg"
                   }`}
                 >
                   {/* Assistant Header info */}
                   {msg.role === "assistant" && (
-                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-2.5 text-[11px] text-slate-400">
+                    <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2 mb-2.5 text-[11px] text-zinc-400">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-semibold uppercase text-cyan-400 px-1.5 py-0.2 rounded bg-cyan-950/80 border border-cyan-800/50">
-                          {msg.provider || "FreeLLMAPI"}
+                        <span className="font-mono font-semibold uppercase text-gold-400 px-1.5 py-0.2 rounded bg-gold-950/80 border border-gold-800/50">
+                          {msg.provider || "The SUN"}
                         </span>
-                        <span className="font-mono text-slate-300 truncate max-w-[150px]">
+                        <span className="font-mono text-zinc-300 truncate max-w-[150px]">
                           {msg.model || selectedModel}
                         </span>
                       </div>
@@ -439,13 +454,13 @@ export default function PlaygroundPage() {
                           <span className="text-emerald-400">{msg.latencyMs}ms</span>
                         )}
                         {msg.tokensPerSec && (
-                          <span className="text-purple-300 hidden sm:inline">
+                          <span className="text-gold-300 hidden sm:inline">
                             ~{msg.tokensPerSec} tok/s
                           </span>
                         )}
                         <button
                           onClick={() => handleCopyMessage(msg.content)}
-                          className="hover:text-white p-1 rounded hover:bg-slate-800/60 transition-colors"
+                          className="hover:text-foreground p-1 rounded hover:bg-zinc-800/60 transition-colors"
                           title="Copy message"
                         >
                           <Copy className="w-3 h-3" />
@@ -458,7 +473,7 @@ export default function PlaygroundPage() {
                   <div className="whitespace-pre-wrap font-sans text-xs sm:text-sm select-text">
                     {msg.content}
                     {msg.isStreaming && (
-                      <span className="inline-block w-2 h-4 ml-1 bg-cyan-400 animate-pulse align-middle" />
+                      <span className="inline-block w-2 h-4 ml-1 bg-gold-400 animate-pulse align-middle" />
                     )}
                   </div>
                 </div>
@@ -469,13 +484,13 @@ export default function PlaygroundPage() {
 
           {/* Quick Prompts Suggestion Pills */}
           {messages.length <= 2 && (
-            <div className="px-4 py-2 border-t border-slate-800/60 bg-[#080c14]/40 flex items-center gap-2 overflow-x-auto text-xs">
-              <span className="text-[11px] text-slate-500 shrink-0 font-medium">Suggestions:</span>
+            <div className="px-4 py-2 border-t border-zinc-800/60 bg-secondary/40 flex items-center gap-2 overflow-x-auto text-xs">
+              <span className="text-[11px] text-zinc-500 shrink-0 font-medium">Suggestions:</span>
               {quickPrompts.map((item, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleSendMessage(item.prompt)}
-                  className="px-2.5 py-1 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-[11px] whitespace-nowrap transition-colors cursor-pointer"
+                  className="px-2.5 py-1 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-[11px] whitespace-nowrap transition-colors cursor-pointer"
                 >
                   {item.title}
                 </button>
@@ -484,20 +499,20 @@ export default function PlaygroundPage() {
           )}
 
           {/* Chat Input Bar */}
-          <div className="p-3 bg-[#080c14] border-t border-slate-800">
+          <div className="p-3 bg-secondary border-t border-zinc-800">
             <div className="flex items-end gap-2">
               <textarea
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
+                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
                     e.preventDefault();
                     handleSendMessage();
                   }
                 }}
                 rows={2}
                 placeholder="Ask or prompt the routed model... (Press Enter to send, Shift+Enter for newline)"
-                className="flex-1 bg-[#0f1422] border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/70 resize-none transition-colors"
+                className="flex-1 bg-secondary border border-zinc-800 rounded-lg p-2.5 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-gold-500/70 resize-none transition-colors"
               />
 
               {isLoading ? (
@@ -512,7 +527,7 @@ export default function PlaygroundPage() {
                 <button
                   onClick={() => handleSendMessage()}
                   disabled={!inputMessage.trim()}
-                  className="flex items-center justify-center p-3 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white disabled:opacity-40 transition-all cursor-pointer shadow-md shadow-cyan-950"
+                  className="flex items-center justify-center p-3 rounded-lg bg-gold-500 hover:bg-gold-400 text-zinc-950 disabled:opacity-40 transition-all cursor-pointer shadow-md shadow-gold-950"
                   title="Send message"
                 >
                   <Send className="w-4 h-4" />
@@ -524,16 +539,16 @@ export default function PlaygroundPage() {
 
         {/* Right Column: Model Selection & Parameter Controls */}
         <div
-          className={`lg:col-span-4 flex flex-col h-full bg-[#0b0f19] rounded-xl border border-slate-800 p-4 space-y-5 overflow-y-auto ${
-            showSettingsMobile ? "fixed inset-4 z-50 bg-[#0b0f19] shadow-2xl" : "hidden lg:flex"
+          className={`lg:col-span-4 flex flex-col h-full bg-card rounded-xl border border-zinc-800 p-4 space-y-5 overflow-y-auto ${
+            showSettingsMobile ? "fixed inset-4 z-50 bg-card shadow-2xl" : "hidden lg:flex"
           }`}
         >
           {showSettingsMobile && (
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800 lg:hidden">
-              <h3 className="font-bold text-sm text-white">Parameters & Model</h3>
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-800 lg:hidden">
+              <h3 className="font-bold text-sm text-foreground">Parameters & Model</h3>
               <button
                 onClick={() => setShowSettingsMobile(false)}
-                className="text-xs text-cyan-400 font-semibold"
+                className="text-xs text-gold-400 font-semibold"
               >
                 Done
               </button>
@@ -542,12 +557,12 @@ export default function PlaygroundPage() {
 
           {/* Model Selector */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+            <label className="text-xs font-semibold text-zinc-300 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+                <Cpu className="w-3.5 h-3.5 text-gold-400" />
                 <span>Target Model / Profile</span>
               </span>
-              <span className="text-[10px] text-slate-400 font-mono">
+              <span className="text-[10px] text-zinc-400 font-mono">
                 {ALL_MODELS.length} available
               </span>
             </label>
@@ -558,7 +573,7 @@ export default function PlaygroundPage() {
                 setSelectedModel(e.target.value);
                 toast(`Switched model to ${e.target.value}`, "info");
               }}
-              className="w-full text-xs font-mono bg-[#07090e] border border-slate-800 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors"
+              className="w-full text-xs font-mono bg-background border border-zinc-800 rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-gold-500 transition-colors"
             >
               <optgroup label="⚡ Auto Routing Profiles">
                 {AUTO_PROFILES.map((p) => (
@@ -598,12 +613,12 @@ export default function PlaygroundPage() {
             </select>
 
             {/* Active Model Meta Badge */}
-            <div className="p-2.5 rounded-lg bg-[#07090e] border border-slate-800 text-[11px] space-y-1">
-              <div className="text-slate-300 font-medium">{activeModelDef.name}</div>
-              <div className="text-slate-400 leading-tight text-[10px]">
+            <div className="p-2.5 rounded-lg bg-background border border-zinc-800 text-[11px] space-y-1">
+              <div className="text-zinc-300 font-medium">{activeModelDef.name}</div>
+              <div className="text-zinc-400 leading-tight text-[10px]">
                 {activeModelDef.description}
               </div>
-              <div className="pt-1 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+              <div className="pt-1 flex items-center justify-between text-[10px] text-zinc-400 font-mono">
                 <span>Speed: ~{activeModelDef.tokensPerSecond} tps</span>
                 <span>Context: {Math.round(activeModelDef.contextWindow / 1000)}k</span>
                 <span className="text-emerald-400">100% Free Tier</span>
@@ -613,14 +628,14 @@ export default function PlaygroundPage() {
 
           {/* Routing Strategy */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-purple-400" />
+            <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-gold-400" />
               <span>Smart Routing Strategy</span>
             </label>
             <select
               value={strategy}
               onChange={(e) => setStrategy(e.target.value)}
-              className="w-full text-xs bg-[#07090e] border border-slate-800 rounded-lg p-2 text-slate-200 focus:outline-none"
+              className="w-full text-xs bg-background border border-zinc-800 rounded-lg p-2 text-zinc-200 focus:outline-none"
             >
               <option value="priority">Priority Chain (Groq → Cerebras → Gemini)</option>
               <option value="latency">Lowest Latency (Fastest TTFT)</option>
@@ -631,26 +646,26 @@ export default function PlaygroundPage() {
 
           {/* System Prompt Input */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-gold-400" />
               <span>System Prompt</span>
             </label>
             <textarea
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               rows={3}
-              className="w-full text-xs font-mono bg-[#07090e] border border-slate-800 rounded-lg p-2 text-slate-300 focus:outline-none focus:border-cyan-500/60 resize-none transition-colors"
+              className="w-full text-xs font-mono bg-background border border-zinc-800 rounded-lg p-2 text-zinc-300 focus:outline-none focus:border-gold-500/60 resize-none transition-colors"
               placeholder="Custom instructions for the model..."
             />
           </div>
 
           {/* Sampling Parameters */}
-          <div className="space-y-4 pt-2 border-t border-slate-800">
+          <div className="space-y-4 pt-2 border-t border-zinc-800">
             {/* Temperature */}
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-slate-300 font-medium">Temperature</span>
-                <span className="font-mono text-cyan-400">{temperature.toFixed(2)}</span>
+                <span className="text-zinc-300 font-medium">Temperature</span>
+                <span className="font-mono text-gold-400">{temperature.toFixed(2)}</span>
               </div>
               <input
                 type="range"
@@ -659,9 +674,9 @@ export default function PlaygroundPage() {
                 step="0.05"
                 value={temperature}
                 onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                className="w-full accent-cyan-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                className="w-full accent-gold-500 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+              <div className="flex justify-between text-[10px] text-zinc-500 font-mono">
                 <span>0.0 (Deterministic)</span>
                 <span>1.5 (Creative)</span>
               </div>
@@ -670,8 +685,8 @@ export default function PlaygroundPage() {
             {/* Max Output Tokens */}
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-slate-300 font-medium">Max Tokens</span>
-                <span className="font-mono text-cyan-400">{maxTokens}</span>
+                <span className="text-zinc-300 font-medium">Max Tokens</span>
+                <span className="font-mono text-gold-400">{maxTokens}</span>
               </div>
               <input
                 type="range"
@@ -680,21 +695,21 @@ export default function PlaygroundPage() {
                 step="128"
                 value={maxTokens}
                 onChange={(e) => setMaxTokens(parseInt(e.target.value, 10))}
-                className="w-full accent-cyan-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                className="w-full accent-gold-500 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
               />
             </div>
 
             {/* Stream Toggle */}
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#07090e] border border-slate-800">
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-background border border-zinc-800">
               <div className="flex flex-col">
-                <span className="text-xs font-medium text-slate-300">Server-Sent Events (SSE)</span>
-                <span className="text-[10px] text-slate-500">Real-time word by word stream</span>
+                <span className="text-xs font-medium text-zinc-300">Server-Sent Events (SSE)</span>
+                <span className="text-[10px] text-zinc-500">Real-time word by word stream</span>
               </div>
               <input
                 type="checkbox"
                 checked={isStreaming}
                 onChange={(e) => setIsStreaming(e.target.checked)}
-                className="w-4 h-4 accent-cyan-500 rounded cursor-pointer"
+                className="w-4 h-4 accent-gold-500 rounded cursor-pointer"
               />
             </div>
           </div>

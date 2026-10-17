@@ -1,4 +1,5 @@
 import { ALL_MODELS } from "@/lib/models-data";
+import { authenticateUnifiedApiRequest } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,10 @@ export async function OPTIONS() {
   return new Response(null, { status: 204, headers: corsHeaders });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authenticationError = await authenticateUnifiedApiRequest(request, { corsHeaders });
+  if (authenticationError) return authenticationError;
+
   const modelsData = ALL_MODELS.map((m) => ({
     id: m.id,
     object: "model",

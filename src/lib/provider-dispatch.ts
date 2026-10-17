@@ -3,366 +3,294 @@ import { db } from "@/db";
 import { providerKeys } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-// Smart responses generator for zero-friction fallback when upstream keys are not supplied or rate limited
-function generateSyntheticResponse(messages: any[], targetModel: string): string {
-  const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-  const query = typeof lastUserMsg === "string" ? lastUserMsg.toLowerCase() : "";
+const PROVIDER_ENDPOINTS: Record<string, string> = {
+  groq: "https://api.groq.com/openai/v1/chat/completions",
+  cerebras: "https://api.cerebras.ai/v1/chat/completions",
+  mistral: "https://api.mistral.ai/v1/chat/completions",
+  openrouter: "https://openrouter.ai/api/v1/chat/completions",
+  gemini: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+  cohere: "https://api.cohere.com/compatibility/v1/chat/completions",
+  huggingface: "https://router.huggingface.co/v1/chat/completions",
+  nvidia: "https://integrate.api.nvidia.com/v1/chat/completions",
+  zhipu: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+};
 
-  // Check for coding or programming queries
-  if (query.includes("code") || query.includes("python") || query.includes("javascript") || query.includes("function") || query.includes("react") || query.includes("typescript")) {
-    return `Here is the clean, production-ready implementation:\n\n` +
-      "```typescript\n" +
-      "// Optimized implementation routed via FreeLLMAPI\n" +
-      "export async function processData<T>(input: T[]): Promise<{ count: number; items: T[] }> {\n" +
-      "  if (!Array.isArray(input)) {\n" +
-      "    throw new TypeError('Expected an array of elements');\n" +
-      "  }\n\n" +
-      "  // Process and sanitize items\n" +
-      "  const items = input.filter(Boolean);\n" +
-      "  return {\n" +
-      "    count: items.length,\n" +
-      "    items,\n" +
-      "  };\n" +
-      "}\n" +
-      "```\n\n" +
-      `### Key highlights:\n` +
-      `- **Zero-allocation filtering**: Keeps memory footprint minimal.\n` +
-      `- **Strict typing**: Fully TypeScript-compliant.\n` +
-      `- **Resilience**: Handles edge cases and falsy values safely.\n\n` +
-      `Let me know if you would like me to add tests or benchmarks!`;
-  }
+type DispatchOptions = { apiKey?: string; customBaseUrl?: string | null };
+type Credentials = { apiKey: string; customBaseUrl?: string | null };
 
-  // Check for reasoning or math queries
-  if (query.includes("why") || query.includes("explain") || query.includes("how") || query.includes("math") || query.includes("difference")) {
-    return `### Comprehensive Breakdown\n\n` +
-      `When analyzing **"${lastUserMsg.slice(0, 60)}..."**, there are three crucial dimensions to consider:\n\n` +
-      `1. **Core Architecture & Fundamentals**\n` +
-      `   The foundational layer relies on deterministic state management and low-latency throughput. Rather than sequential execution, modern systems decouple ingestion from processing.\n\n` +
-      `2. **Operational Trade-offs**\n` +
-      `   - **Throughput vs. Latency**: Optimizing for raw token speed often requires batching, which slightly degrades time-to-first-token (TTFT).\n` +
-      `   - **Resilience vs. Simplicity**: Fallback chains introduce transient states but guarantee 99.99% availability even under aggressive provider rate limits.\n\n` +
-      `3. **Practical Recommendation**\n` +
-      `   For developer workflows, prioritize high-speed models (e.g. Cerebras or Groq) for autocomplete and interactive dialogue, while delegating complex reasoning to larger parameter models (e.g. DeepSeek-R1 or Gemini 2.5).\n\n` +
-      `Is there a specific edge case you'd like to dive into further?`;
-  }
-
-  // Check for greetings or test prompts
-  if (query.includes("hello") || query.includes("hi") || query.includes("test") || query.includes("ping") || query === "") {
-    return `Hello! I'm active and responding via **FreeLLMAPI**.\n\n` +
-      `Your request was dispatched through the OpenAI-compatible \`/v1/chat/completions\` gateway.\n\n` +
-      `- **Active Model**: \`${targetModel}\`\n` +
-      `- **Compatibility**: 100% OpenAI Drop-in Replacement\n` +
-      `- **Status**: All 34 provider routes operational\n\n` +
-      `How can I assist you today? You can test coding, analysis, reasoning, or structured JSON parsing.`;
-  }
-
-  // Default detailed response
-  return `### Response from ${targetModel}\n\n` +
-    `Regarding your inquiry:\n\n` +
-    `> ${lastUserMsg.length > 120 ? lastUserMsg.slice(0, 120) + "..." : lastUserMsg}\n\n` +
-    `Here is a structured overview:\n\n` +
-    `1. **Primary Insight**: The request was successfully received and routed through FreeLLMAPI's high-speed inference layer.\n` +
-    `2. **Key Capabilities**: You have access to 7.4 billion tokens across 34 providers, including Groq, Cerebras, Google Gemini, Mistral, and OpenRouter.\n` +
-    `3. **Next Steps**: You can configure your own provider keys on the **Keys** page or test various models and parameters directly in the **Playground**.\n\n` +
-    `Feel free to ask follow-up questions, request code snippets, or configure system prompts.`;
+function isConfiguredCredential(value?: string | null): value is string {
+  return Boolean(
+    value &&
+      value.length > 10 &&
+      !/(auto_configured|placeholder|example|changeme)/i.test(value)
+  );
 }
 
-// Calculate token estimates (rough 4 chars = 1 token)
-function estimateTokens(text: string): number {
+function estimateTokens(text: string) {
   return Math.max(1, Math.ceil(text.length / 4));
 }
 
-export async function executeChatCompletion(req: ChatCompletionRequest, route: ResolvedRoute, clientIp = "127.0.0.1") {
-  const startTime = Date.now();
-  const completionId = `chatcmpl-${Math.random().toString(36).substring(2, 11)}`;
-  const createdTime = Math.floor(startTime / 1000);
+function getCloudflareEndpoint(baseUrl?: string | null) {
+  if (!baseUrl) return null;
 
-  // Check if we have an active upstream provider key in the database
-  let upstreamKey: string | null = null;
   try {
-    const dbKeys = await db
-      .select()
+    const url = new URL(baseUrl);
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== "api.cloudflare.com" ||
+      !url.pathname.includes("/client/v4/accounts/") ||
+      !url.pathname.endsWith("/ai/v1")
+    ) {
+      return null;
+    }
+
+    url.pathname = `${url.pathname.replace(/\/+$/, "")}/chat/completions`;
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function errorResponse(status: number, message: string, code: string) {
+  return Response.json(
+    { error: { message, type: "api_error", code } },
+    { status }
+  );
+}
+
+async function getCredentials(provider: string): Promise<Credentials | null> {
+  try {
+    const storedKeys = await db
+      .select({
+        apiKey: providerKeys.apiKey,
+        customBaseUrl: providerKeys.customBaseUrl,
+        isActive: providerKeys.isActive,
+      })
       .from(providerKeys)
-      .where(eq(providerKeys.provider, route.provider))
-      .limit(1);
+      .where(eq(providerKeys.provider, provider));
+    const stored = storedKeys.find(
+      (candidate) => candidate.isActive && isConfiguredCredential(candidate.apiKey)
+    );
 
-    if (dbKeys.length > 0 && dbKeys[0].isActive && dbKeys[0].apiKey) {
-      upstreamKey = dbKeys[0].apiKey;
+    if (stored) {
+      return { apiKey: stored.apiKey, customBaseUrl: stored.customBaseUrl };
     }
-  } catch (err) {
-    // DB lookup fallback
+  } catch (error) {
+    console.error("Provider credential lookup failed:", error);
   }
 
-  // Also check environment variable for that provider
-  const envKeyName = `${route.provider.toUpperCase()}_API_KEY`;
-  if (!upstreamKey && process.env[envKeyName]) {
-    upstreamKey = process.env[envKeyName] || null;
-  }
+  const environmentKey = process.env[`${provider.toUpperCase()}_API_KEY`];
+  return isConfiguredCredential(environmentKey) ? { apiKey: environmentKey } : null;
+}
 
-  // If real upstream key is configured, we could dispatch to the real endpoint
-  // For instance Groq:
-  let upstreamResponse: Response | null = null;
-  let isRealUpstream = false;
-
-  if (upstreamKey && upstreamKey.length > 10 && !upstreamKey.includes("placeholder")) {
-    try {
-      let endpointUrl = "";
-      let authHeader = `Bearer ${upstreamKey}`;
-
-      if (route.provider === "groq") {
-        endpointUrl = "https://api.groq.com/openai/v1/chat/completions";
-      } else if (route.provider === "cerebras") {
-        endpointUrl = "https://api.cerebras.ai/v1/chat/completions";
-      } else if (route.provider === "mistral") {
-        endpointUrl = "https://api.mistral.ai/v1/chat/completions";
-      } else if (route.provider === "openrouter") {
-        endpointUrl = "https://openrouter.ai/api/v1/chat/completions";
-      } else if (route.provider === "gemini") {
-        endpointUrl = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-      }
-
-      if (endpointUrl) {
-        const upstreamModel = route.targetModel.id.includes("/")
-          ? route.targetModel.id.split("/")[1]
-          : route.targetModel.id;
-
-        const res = await fetch(endpointUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: authHeader,
-          },
-          body: JSON.stringify({
-            model: upstreamModel,
-            messages: req.messages,
-            stream: req.stream || false,
-            temperature: req.temperature ?? 0.7,
-            max_tokens: req.max_tokens ?? 2048,
-          }),
-        });
-
-        if (res.ok) {
-          upstreamResponse = res;
-          isRealUpstream = true;
-        }
-      }
-    } catch (e) {
-      console.warn("Upstream call failed, falling back to smart router engine:", e);
-    }
-  }
-
-  // If upstream succeeded and streaming is requested:
-  if (isRealUpstream && upstreamResponse && req.stream) {
-    const ttftMs = Date.now() - startTime;
-    // Log asynchronously
-    logRequestUsage({
-      modelRequested: req.model || route.targetModel.id,
-      providerUsed: route.provider,
-      modelUsed: route.targetModel.id,
-      promptTokens: 50,
-      completionTokens: 120,
-      totalTokens: 170,
-      latencyMs: Date.now() - startTime,
-      ttftMs,
-      statusCode: 200,
-      isFallback: false,
-      fallbackAttempts: 0,
-      clientIp,
-    });
-
-    return new Response(upstreamResponse.body, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "x-freellmapi-provider": route.provider,
-        "x-freellmapi-model": route.targetModel.id,
-        "x-freellmapi-routed": route.isAuto ? "true" : "false",
-      },
-    });
-  }
-
-  // If upstream succeeded and non-streaming is requested:
-  if (isRealUpstream && upstreamResponse && !req.stream) {
-    const data = await upstreamResponse.json();
-    const latencyMs = Date.now() - startTime;
-    logRequestUsage({
-      modelRequested: req.model || route.targetModel.id,
-      providerUsed: route.provider,
-      modelUsed: route.targetModel.id,
-      promptTokens: data.usage?.prompt_tokens || 50,
-      completionTokens: data.usage?.completion_tokens || 100,
-      totalTokens: data.usage?.total_tokens || 150,
-      latencyMs,
-      ttftMs: latencyMs,
-      statusCode: 200,
-      isFallback: false,
-      fallbackAttempts: 0,
-      clientIp,
-    });
-    return Response.json(data, {
-      headers: {
-        "x-freellmapi-provider": route.provider,
-        "x-freellmapi-model": route.targetModel.id,
-        "x-freellmapi-routed": route.isAuto ? "true" : "false",
-      },
-    });
-  }
-
-  // Built-in high-performance smart AI engine fallback
-  const content = generateSyntheticResponse(req.messages, route.targetModel.name);
-  const promptText = req.messages.map((m) => `${m.role}: ${m.content || ""}`).join("\n");
-  const promptTokens = estimateTokens(promptText);
-  const completionTokens = estimateTokens(content);
-  const totalTokens = promptTokens + completionTokens;
-
-  // If streaming is requested
-  if (req.stream) {
-    const encoder = new TextEncoder();
-    const words = content.split(" ");
-    let ttftRecorded = false;
-    let ttftMs = 120;
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        // Send initial chunk
-        const initialChunk = {
-          id: completionId,
-          object: "chat.completion.chunk",
-          created: createdTime,
-          model: route.targetModel.id,
-          choices: [
-            {
-              index: 0,
-              delta: { role: "assistant", content: "" },
-              finish_reason: null,
-            },
-          ],
-        };
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(initialChunk)}\n\n`));
-
-        // Stream word by word
-        for (let i = 0; i < words.length; i++) {
-          if (!ttftRecorded) {
-            ttftMs = Date.now() - startTime;
-            ttftRecorded = true;
-          }
-          const word = words[i] + (i < words.length - 1 ? " " : "");
-          const chunk = {
-            id: completionId,
-            object: "chat.completion.chunk",
-            created: createdTime,
-            model: route.targetModel.id,
-            choices: [
-              {
-                index: 0,
-                delta: { content: word },
-                finish_reason: null,
-              },
-            ],
-          };
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-          // Micro delay to simulate realistic streaming throughput
-          await new Promise((r) => setTimeout(r, 18));
-        }
-
-        // Send final chunk
-        const finalChunk = {
-          id: completionId,
-          object: "chat.completion.chunk",
-          created: createdTime,
-          model: route.targetModel.id,
-          choices: [
-            {
-              index: 0,
-              delta: {},
-              finish_reason: "stop",
-            },
-          ],
-        };
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(finalChunk)}\n\n`));
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
-
-        // Asynchronously record log
-        const latencyMs = Date.now() - startTime;
-        logRequestUsage({
-          modelRequested: req.model || route.targetModel.id,
-          providerUsed: route.provider,
-          modelUsed: route.targetModel.id,
-          promptTokens,
-          completionTokens,
-          totalTokens,
-          latencyMs,
-          ttftMs,
-          statusCode: 200,
-          isFallback: true,
-          fallbackAttempts: 1,
-          clientIp,
-        });
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "x-freellmapi-provider": route.provider,
-        "x-freellmapi-model": route.targetModel.id,
-        "x-freellmapi-routed": route.isAuto ? "true" : "false",
-        "x-freellmapi-fallback": "true",
-      },
-    });
-  }
-
-  // Non-streaming response
-  const latencyMs = Date.now() - startTime;
-  logRequestUsage({
-    modelRequested: req.model || route.targetModel.id,
-    providerUsed: route.provider,
-    modelUsed: route.targetModel.id,
-    promptTokens,
-    completionTokens,
-    totalTokens,
-    latencyMs,
-    ttftMs: latencyMs,
-    statusCode: 200,
-    isFallback: true,
-    fallbackAttempts: 1,
-    clientIp,
-  });
-
-  const responseJson = {
-    id: completionId,
-    object: "chat.completion",
-    created: createdTime,
+export async function executeChatCompletion(
+  req: ChatCompletionRequest,
+  route: ResolvedRoute,
+  clientIp = "127.0.0.1",
+  options: DispatchOptions = {}
+) {
+  const startTime = Date.now();
+  const promptText = req.messages
+    .map((message) => `${message.role}: ${typeof message.content === "string" ? message.content : ""}`)
+    .join("\n");
+  const estimatedPromptTokens = estimateTokens(promptText);
+  const candidates = route.isAuto && route.fallbackChain.length > 0
+    ? route.fallbackChain
+    : [route.targetModel];
+  let lastFailure = {
+    status: 503,
+    message: `No valid API key is configured for ${route.provider}. Add an upstream provider key in the admin dashboard.`,
+    code: "provider_not_configured",
+    provider: route.provider,
     model: route.targetModel.id,
-    system_fingerprint: "fp_freellmapi_v1",
-    choices: [
-      {
-        index: 0,
-        message: {
-          role: "assistant",
-          content,
-        },
-        finish_reason: "stop",
-      },
-    ],
-    usage: {
-      prompt_tokens: promptTokens,
-      completion_tokens: completionTokens,
-      total_tokens: totalTokens,
-    },
+    fallbackAttempts: 0,
   };
 
-  return Response.json(responseJson, {
-    headers: {
-      "x-freellmapi-provider": route.provider,
-      "x-freellmapi-model": route.targetModel.id,
-      "x-freellmapi-routed": route.isAuto ? "true" : "false",
-      "x-freellmapi-fallback": "true",
-    },
-  });
+  const logResult = async (result: {
+    status: number;
+    provider: string;
+    model: string;
+    completionTokens?: number;
+    promptTokens?: number;
+    fallbackAttempts: number;
+  }) => {
+    const completionTokens = result.completionTokens ?? 0;
+    await logRequestUsage({
+      modelRequested: req.model || route.targetModel.id,
+      providerUsed: result.provider,
+      modelUsed: result.model,
+      promptTokens: result.promptTokens ?? estimatedPromptTokens,
+      completionTokens,
+      totalTokens: (result.promptTokens ?? estimatedPromptTokens) + completionTokens,
+      latencyMs: Date.now() - startTime,
+      ttftMs: Date.now() - startTime,
+      statusCode: result.status,
+      isFallback: result.fallbackAttempts > 0,
+      fallbackAttempts: result.fallbackAttempts,
+      clientIp,
+    });
+  };
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    const provider = candidate.provider;
+    const credentials = options.apiKey && index === 0
+      ? { apiKey: options.apiKey, customBaseUrl: options.customBaseUrl }
+      : await getCredentials(provider);
+
+    lastFailure = {
+      status: 503,
+      message: `No valid API key is configured for ${provider}. Add an upstream provider key in the admin dashboard.`,
+      code: "provider_not_configured",
+      provider,
+      model: candidate.id,
+      fallbackAttempts: index,
+    };
+
+    if (!credentials || !isConfiguredCredential(credentials.apiKey)) {
+      if (route.isAuto) continue;
+      break;
+    }
+
+    const endpoint = provider === "cloudflare"
+      ? getCloudflareEndpoint(credentials.customBaseUrl)
+      : PROVIDER_ENDPOINTS[provider];
+    if (!endpoint) {
+      lastFailure = {
+        status: 501,
+        message: `The ${provider} provider does not have a supported chat-completions endpoint configured.`,
+        code: "provider_not_supported",
+        provider,
+        model: candidate.id,
+        fallbackAttempts: index,
+      };
+      if (route.isAuto) continue;
+      break;
+    }
+
+    const model = candidate.id.includes("/")
+      ? candidate.id.split("/").slice(1).join("/")
+      : candidate.id;
+    let upstreamResponse: Response;
+
+    try {
+      upstreamResponse = await fetch(endpoint, {
+        method: "POST",
+        signal: AbortSignal.timeout(120_000),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${credentials.apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: req.messages,
+          stream: req.stream === true,
+          temperature: req.temperature ?? 0.7,
+          max_tokens: req.max_tokens ?? 2048,
+          top_p: req.top_p ?? 1,
+          ...(req.tools ? { tools: req.tools } : {}),
+          ...(req.tool_choice ? { tool_choice: req.tool_choice } : {}),
+        }),
+      });
+    } catch (error) {
+      const timedOut = error instanceof Error && error.name === "TimeoutError";
+      lastFailure = {
+        status: 502,
+        message: timedOut
+          ? `The ${provider} request timed out after 120 seconds.`
+          : `Could not connect to the ${provider} API. Check provider availability and try again.`,
+        code: timedOut ? "upstream_timeout" : "upstream_connection_failed",
+        provider,
+        model: candidate.id,
+        fallbackAttempts: index,
+      };
+      if (route.isAuto) continue;
+      break;
+    }
+
+    if (!upstreamResponse.ok) {
+      const retryStatus = upstreamResponse.status === 401 || upstreamResponse.status === 403 ||
+        upstreamResponse.status === 429 || upstreamResponse.status >= 500;
+      const status = upstreamResponse.status >= 500 ? 502 : upstreamResponse.status;
+      const code = upstreamResponse.status === 401 || upstreamResponse.status === 403
+        ? "provider_key_rejected"
+        : upstreamResponse.status === 429
+          ? "provider_rate_limited"
+          : "upstream_error";
+      lastFailure = {
+        status,
+        message: `The ${provider} API returned HTTP ${upstreamResponse.status}. Check the key, model access, and provider quota.`,
+        code,
+        provider,
+        model: candidate.id,
+        fallbackAttempts: index,
+      };
+      if (route.isAuto && retryStatus) continue;
+      break;
+    }
+
+    const responseHeaders = {
+      "x-thesun-provider": provider,
+      "x-thesun-model": candidate.id,
+      "x-thesun-routed": route.isAuto ? "true" : "false",
+      ...(index > 0 ? { "x-thesun-fallback": "true" } : {}),
+    };
+
+    if (req.stream) {
+      await logResult({
+        status: 200,
+        provider,
+        model: candidate.id,
+        fallbackAttempts: index,
+      });
+      return new Response(upstreamResponse.body, {
+        status: upstreamResponse.status,
+        headers: {
+          ...responseHeaders,
+          "Content-Type": upstreamResponse.headers.get("content-type") ?? "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+        },
+      });
+    }
+
+    let data: {
+      usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        total_tokens?: number;
+      };
+    };
+    try {
+      data = await upstreamResponse.json();
+    } catch {
+      lastFailure = {
+        status: 502,
+        message: `The ${provider} API returned an invalid response.`,
+        code: "invalid_upstream_response",
+        provider,
+        model: candidate.id,
+        fallbackAttempts: index,
+      };
+      if (route.isAuto) continue;
+      break;
+    }
+
+    const promptTokens = data.usage?.prompt_tokens ?? estimatedPromptTokens;
+    const completionTokens = data.usage?.completion_tokens ?? 0;
+    await logResult({
+      status: 200,
+      provider,
+      model: candidate.id,
+      promptTokens,
+      completionTokens,
+      fallbackAttempts: index,
+    });
+    return Response.json(data, { headers: responseHeaders });
+  }
+
+  await logResult(lastFailure);
+  return errorResponse(lastFailure.status, lastFailure.message, lastFailure.code);
 }

@@ -1,81 +1,161 @@
 @import "tailwindcss";
 
+@theme inline {
+  --font-sans: var(--font-plex-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  /* A restrained bullion scale for The SUN's signature accent. */
+  --color-gold-100: #f7ecd0;
+  --color-gold-200: #f0dfae;
+  --color-gold-300: #e7cd85;
+  --color-gold-400: #d9b45b;
+  --color-gold-500: #c9a227;
+  --color-gold-600: #a8861d;
+  --color-gold-700: #866a18;
+  --color-gold-800: #5f4a12;
+  --color-gold-900: #3d2f0c;
+  --color-gold-950: #241c07;
+}
+
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 6.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 6.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --background: 240 6% 3%;
+    --foreground: 45 20% 94%;
+    --card: 240 5% 6%;
+    --card-foreground: 45 20% 94%;
+    --popover: 240 5% 7%;
+    --popover-foreground: 45 20% 94%;
+    --primary: 43 68% 52%;
+    --primary-foreground: 240 10% 6%;
+    --secondary: 240 4% 7%;
+    --secondary-foreground: 45 16% 90%;
+    --muted: 240 4% 10%;
+    --muted-foreground: 45 8% 60%;
+    --accent: 43 40% 12%;
+    --accent-foreground: 43 70% 82%;
+    --destructive: 350 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 12% 13%;
+    --input: 40 12% 16%;
+    --ring: 43 68% 52%;
+    --radius: 0.75rem;
+  }
+
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
   }
 
   body {
-    background-color: #07090e;
-    color: #e2e8f0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
     overflow-x: hidden;
+    background-color: hsl(var(--background));
+    background-image: radial-gradient(ellipse at 50% -32rem, rgba(201, 162, 39, 0.1), transparent 54rem);
+    color: hsl(var(--foreground));
+    font-family: var(--font-plex-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  button {
+    font: inherit;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="range"] {
+    accent-color: #c9a227;
+  }
+
+  select option,
+  select optgroup {
+    background-color: #0e0e0f;
+    color: #ece7db;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgba(217, 180, 91, 0.85);
+    outline-offset: 3px;
+    border-radius: 4px;
   }
 }
 
-/* Custom scrollbars for code and chat */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
-  background: #0d111c;
+  background: #0a0a0b;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #2a251a;
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #4a3d1e;
 }
 
-/* Developer glowing accents and subtle grid */
+::selection {
+  background: rgba(201, 162, 39, 0.32);
+  color: #f7ecd0;
+}
+
 .bg-grid-pattern {
-  background-size: 32px 32px;
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 36px 36px;
+  background-image:
+    linear-gradient(to right, rgba(231, 205, 133, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(231, 205, 133, 0.025) 1px, transparent 1px);
 }
 
-.glow-blue {
-  box-shadow: 0 0 40px -10px rgba(56, 189, 248, 0.25);
-}
-
-.glow-purple {
-  box-shadow: 0 0 40px -10px rgba(168, 85, 247, 0.25);
-}
-
-.glow-cyan {
-  box-shadow: 0 0 35px -8px rgba(6, 182, 212, 0.3);
+.glow-solar {
+  box-shadow:
+    0 0 18px -7px rgba(201, 162, 39, 0.4),
+    0 0 34px -16px rgba(201, 162, 39, 0.2);
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+  background: linear-gradient(135deg, #f0dfae 0%, #c9a227 52%, #a8861d 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
-.text-gradient-cyan {
-  background: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+.text-gradient-solar {
+  background: linear-gradient(120deg, #f7ecd0 0%, #d9b45b 48%, #a8861d 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -86,4 +166,15 @@
 
 .animate-pulse-subtle {
   animation: pulse-subtle 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

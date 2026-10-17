@@ -2,12 +2,15 @@ import { NextRequest } from "next/server";
 import { db } from "@/db";
 import { routingConfig } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { adminUnauthorizedResponse, isAdminRequest } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
 const DEFAULT_CHAIN = ["groq", "cerebras", "gemini", "mistral", "openrouter", "cohere", "cloudflare", "huggingface", "nvidia", "zhipu"];
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!isAdminRequest(request)) return adminUnauthorizedResponse();
+
   try {
     let configs = await db.select().from(routingConfig).limit(1);
 
@@ -76,6 +79,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isAdminRequest(req)) return adminUnauthorizedResponse();
+
   try {
     const body = await req.json();
     const { strategy, fallbackChain, cooldownSeconds, maxRetries, stickySessions, sessionTimeoutMinutes, activeProfile } = body;

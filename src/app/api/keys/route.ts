@@ -3,8 +3,22 @@ import { db } from "@/db";
 import { providerKeys, unifiedKeys } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
+import { adminUnauthorizedResponse, isAdminRequest } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
+
+const SUPPORTED_PROVIDERS = new Set([
+  "groq",
+  "cerebras",
+  "gemini",
+  "mistral",
+  "openrouter",
+  "cohere",
+  "cloudflare",
+  "huggingface",
+  "nvidia",
+  "zhipu",
+]);
 
 // Helper to mask key: e.g. "gsk_1234567890abcdef" -> "gsk_12...cdef"
 function maskKey(key: string): string {
@@ -13,13 +27,25 @@ function maskKey(key: string): string {
   return `${key.slice(0, 5)}••••••••${key.slice(-4)}`;
 }
 
-// Generate unified key format: freellmapi-live-xxxx
-function generateUnifiedKeyString(): string {
-  const rand = crypto.randomBytes(16).toString("hex");
-  return `freellmapi-live-${rand}`;
+function serializeProviderKey({ apiKey, ...key }: typeof providerKeys.$inferSelect) {
+  return {
+    ...key,
+    maskedKey: maskKey(apiKey),
+    isConfigured: Boolean(
+      apiKey && !/(auto_configured|placeholder|example|changeme)/i.test(apiKey)
+    ),
+  };
 }
 
-export async function GET() {
+// Generate unified key format: thesun-live-xxxx
+function generateUnifiedKeyString(): string {
+  const rand = crypto.randomBytes(16).toString("hex");
+  return `thesun-live-${rand}`;
+}
+
+export async function GET(request: Request) {
+  if (!isAdminRequest(request)) return adminUnauthorizedResponse();
+
   try {
     // 1. Ensure unified key exists
     let existingUnified = await db.select().from(unifiedKeys).limit(1);
@@ -38,92 +64,14 @@ export async function GET() {
       existingUnified = [inserted];
     }
 
-    // 2. Fetch all provider keys
-    let keys = await db.select().from(providerKeys);
-
-    // If no provider keys exist yet, initialize sample/template providers so user has an out-of-the-box configuration ready
-    if (keys.length === 0) {
-      await db.insert(providerKeys).values([
-        {
-          provider: "groq",
-          label: "Groq LPU Engine",
-          apiKey: "gsk_auto_configured_free_tier",
-          isActive: true,
-          rpmLimit: 30,
-          tpmLimit: 40000,
-          rpdLimit: 14400,
-          currentRpm: 4,
-          currentRpd: 118,
-          status: "healthy",
-          lastTestedAt: new Date(),
-        },
-        {
-          provider: "cerebras",
-          label: "Cerebras CS-3 Engine",
-          apiKey: "csk_auto_configured_free_tier",
-          isActive: true,
-          rpmLimit: 30,
-          tpmLimit: 60000,
-          rpdLimit: 14400,
-          currentRpm: 2,
-          currentRpd: 84,
-          status: "healthy",
-          lastTestedAt: new Date(),
-        },
-        {
-          provider: "gemini",
-          label: "Google AI Studio",
-          apiKey: "AIzaSy_auto_configured_free_tier",
-          isActive: true,
-          rpmLimit: 15,
-          tpmLimit: 1000000,
-          rpdLimit: 1500,
-          currentRpm: 1,
-          currentRpd: 42,
-          status: "healthy",
-          lastTestedAt: new Date(),
-        },
-        {
-          provider: "mistral",
-          label: "Mistral La Plateforme",
-          apiKey: "mistral_auto_configured_free_tier",
-          isActive: true,
-          rpmLimit: 60,
-          tpmLimit: 100000,
-          rpdLimit: 50000,
-          currentRpm: 3,
-          currentRpd: 65,
-          status: "healthy",
-          lastTestedAt: new Date(),
-        },
-        {
-          provider: "openrouter",
-          label: "OpenRouter Free Pool",
-          apiKey: "sk-or-auto_configured_free_tier",
-          isActive: true,
-          rpmLimit: 20,
-          tpmLimit: 40000,
-          rpdLimit: 200,
-          currentRpm: 0,
-          currentRpd: 14,
-          status: "healthy",
-          lastTestedAt: new Date(),
-        },
-      ]);
-      keys = await db.select().from(providerKeys);
-    }
-
-    const maskedKeys = keys.map((k) => ({
-      ...k,
-      maskedKey: maskKey(k.apiKey),
-      isConfigured: Boolean(k.apiKey && !k.apiKey.includes("auto_configured")),
-    }));
+    const keys = await db.select().from(providerKeys);
+    const maskedKeys = keys.map(serializeProviderKey);
 
     return Response.json({
       unifiedKey: existingUnified[0],
       providerKeys: maskedKeys,
       totalKeys: keys.length,
-      activeKeysCount: keys.filter((k) => k.isActive).length,
+      activeKeysCount: maskedKeys.filter((key) => key.isActive && key.isConfigured).length,
     });
   } catch (error: any) {
     console.error("Error fetching keys:", error);
@@ -132,12 +80,47 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isAdminRequest(req)) return adminUnauthorizedResponse();
+
   try {
     const body = await req.json();
-    const { provider, label, apiKey, customBaseUrl, rpmLimit, tpmLimit, rpdLimit } = body;
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return Response.json({ error: "Invalid request body" }, { status: 400 });
+    }
 
-    if (!provider || !apiKey) {
-      return Response.json({ error: "Provider and apiKey are required." }, { status: 400 });
+    const { provider, label, apiKey, customBaseUrl, rpmLimit, tpmLimit, rpdLimit } = body;
+    const normalizedApiKey = typeof apiKey === "string" ? apiKey.trim() : "";
+
+    if (
+      typeof provider !== "string" ||
+      !SUPPORTED_PROVIDERS.has(provider) ||
+      normalizedApiKey.length < 8 ||
+      normalizedApiKey.length > 4096 ||
+      (label !== undefined && (typeof label !== "string" || label.length > 100))
+    ) {
+      return Response.json(
+        { error: "Provide a valid provider, API key, and label." },
+        { status: 400 }
+      );
+    }
+
+    let normalizedCustomBaseUrl: string | null = null;
+    if (provider === "cloudflare") {
+      try {
+        const endpoint = new URL(typeof customBaseUrl === "string" ? customBaseUrl : "");
+        const validCloudflareEndpoint =
+          endpoint.protocol === "https:" &&
+          endpoint.hostname === "api.cloudflare.com" &&
+          endpoint.pathname.includes("/client/v4/accounts/") &&
+          endpoint.pathname.endsWith("/ai/v1");
+        if (!validCloudflareEndpoint) throw new Error("Invalid Cloudflare endpoint");
+        normalizedCustomBaseUrl = endpoint.origin + endpoint.pathname;
+      } catch {
+        return Response.json(
+          { error: "Cloudflare requires an HTTPS AI endpoint URL ending in /client/v4/accounts/<account-id>/ai/v1." },
+          { status: 400 }
+        );
+      }
     }
 
     // Check if key for provider exists
@@ -151,15 +134,15 @@ export async function POST(req: NextRequest) {
       const [updated] = await db
         .update(providerKeys)
         .set({
-          apiKey,
+          apiKey: normalizedApiKey,
           label: label || existing[0].label,
-          customBaseUrl: customBaseUrl || existing[0].customBaseUrl,
+          customBaseUrl: normalizedCustomBaseUrl,
           isActive: true,
-          status: "healthy",
+          status: "unverified",
           rpmLimit: rpmLimit || existing[0].rpmLimit,
           tpmLimit: tpmLimit || existing[0].tpmLimit,
           rpdLimit: rpdLimit || existing[0].rpdLimit,
-          lastTestedAt: new Date(),
+          lastTestedAt: null,
           updatedAt: new Date(),
         })
         .where(eq(providerKeys.id, existing[0].id))
@@ -168,10 +151,7 @@ export async function POST(req: NextRequest) {
       return Response.json({
         success: true,
         message: `Provider ${provider} updated successfully`,
-        providerKey: {
-          ...updated,
-          maskedKey: maskKey(updated.apiKey),
-        },
+        providerKey: serializeProviderKey(updated),
       });
     }
 
@@ -181,24 +161,20 @@ export async function POST(req: NextRequest) {
       .values({
         provider,
         label: label || `${provider.toUpperCase()} Key`,
-        apiKey,
-        customBaseUrl,
+        apiKey: normalizedApiKey,
+        customBaseUrl: normalizedCustomBaseUrl,
         isActive: true,
         rpmLimit: rpmLimit || 30,
         tpmLimit: tpmLimit || 50000,
         rpdLimit: rpdLimit || 14400,
-        status: "healthy",
-        lastTestedAt: new Date(),
+        status: "unverified",
       })
       .returning();
 
     return Response.json({
       success: true,
       message: `Provider ${provider} added successfully`,
-      providerKey: {
-        ...inserted,
-        maskedKey: maskKey(inserted.apiKey),
-      },
+      providerKey: serializeProviderKey(inserted),
     });
   } catch (error: any) {
     console.error("Error saving provider key:", error);
@@ -207,6 +183,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  if (!isAdminRequest(req)) return adminUnauthorizedResponse();
+
   try {
     const body = await req.json();
     const { action, id, isActive } = body;
@@ -238,7 +216,7 @@ export async function PUT(req: NextRequest) {
         .set({ isActive, updatedAt: new Date() })
         .where(eq(providerKeys.id, id))
         .returning();
-      return Response.json({ success: true, providerKey: updated });
+      return Response.json({ success: true, providerKey: updated ? serializeProviderKey(updated) : null });
     }
 
     return Response.json({ error: "Invalid action" }, { status: 400 });
@@ -248,6 +226,8 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  if (!isAdminRequest(req)) return adminUnauthorizedResponse();
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");

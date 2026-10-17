@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { resolveModelRoute } from "@/lib/router-engine";
+import { resolveModelRouteWithConfig } from "@/lib/resolver-db";
 import { executeChatCompletion } from "@/lib/provider-dispatch";
+import { authenticateUnifiedApiRequest } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,9 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
+  const authenticationError = await authenticateUnifiedApiRequest(req, { corsHeaders });
+  if (authenticationError) return authenticationError;
+
   try {
     let body: any;
     try {
@@ -51,7 +55,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Resolve model and fallback chain
-    const route = resolveModelRoute(body.model);
+    const route = await resolveModelRouteWithConfig(body.model);
     const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "127.0.0.1";
 
     // Execute chat completion
@@ -77,7 +81,7 @@ export async function POST(req: NextRequest) {
 
     return response;
   } catch (error: any) {
-    console.error("FreeLLMAPI Chat Completion Error:", error);
+    console.error("The SUN Chat Completion Error:", error);
     return Response.json(
       {
         error: {

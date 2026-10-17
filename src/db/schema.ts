@@ -42,6 +42,25 @@ export const routingConfig = pgTable("routing_config", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const modelConfig = pgTable("model_config", {
+  id: serial("id").primaryKey(),
+  modelId: text("model_id").notNull().unique(),
+  enabled: boolean("enabled").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  displayName: text("display_name"),
+  contextOverride: integer("context_override"),
+  capabilityTier: text("capability_tier"),
+  rpmOverride: integer("rpm_override"),
+  rpdOverride: integer("rpd_override"),
+  tpmOverride: integer("tpm_override"),
+  tpdOverride: integer("tpd_override"),
+  toolsEnabled: boolean("tools_enabled").default(true).notNull(),
+  visionEnabled: boolean("vision_enabled").default(false).notNull(),
+  inChain: boolean("in_chain").default(true).notNull(),
+  aliases: jsonb("aliases").default([]).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const requestLogs = pgTable("request_logs", {
   id: serial("id").primaryKey(),
   modelRequested: text("model_requested").notNull(),

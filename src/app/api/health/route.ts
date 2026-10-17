@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { sql } from "drizzle-orm";
+import { PROVIDERS_INFO, PROVIDER_MODELS } from "@/lib/models-data";
 
 export const dynamic = "force-dynamic";
 
@@ -8,11 +9,11 @@ export async function GET() {
     await db.execute(sql`select 1`);
     return Response.json({
       status: "healthy",
-      service: "freellmapi-gateway",
+      service: "thesun-gateway",
       version: "0.15.2",
       openaiCompatible: true,
-      providersSupported: 34,
-      modelEndpoints: 635,
+      providersSupported: PROVIDERS_INFO.length,
+      modelEndpoints: PROVIDER_MODELS.length,
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {
