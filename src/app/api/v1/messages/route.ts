@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { resolveModelRouteWithConfig } from "@/lib/resolver-db";
 import { executeChatCompletion } from "@/lib/provider-dispatch";
 import { authenticateUnifiedApiRequest } from "@/lib/api-auth";
+import { maybeEnhanceMessages } from "@/lib/web-tools";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { model, messages, system, max_tokens, stream } = body;
 
-    const chatMessages: any[] = [];
+    let chatMessages: any[] = [];
     if (system) {
       chatMessages.push({ role: "system", content: system });
     }
@@ -37,6 +38,15 @@ export async function POST(req: NextRequest) {
           : msg.content;
         chatMessages.push({ role: msg.role, content: textContent });
       }
+    }
+
+    // Web tools: scrape/search intent -> WEB CONTEXT system message before the
+    // last user message. Never throws; x-web-tools / WEB_TOOLS_MODE opt-outs apply.
+    if (chatMessages.length > 0) {
+      const enhancement = await maybeEnhanceMessages(chatMessages, req.headers);
+      chatMessages = enhancement.messages;
+      if (enhancement.summary) console.log(`[web-tools] ${enhancement.summary}`);
+      else if (enhancement.note) console.log(`[web-tools] skipped: ${enhancement.note}`);
     }
 
     const route = await resolveModelRouteWithConfig(model || "auto:best");

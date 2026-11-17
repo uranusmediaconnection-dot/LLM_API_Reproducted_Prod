@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { resolveModelRouteWithConfig } from "@/lib/resolver-db";
 import { executeChatCompletion } from "@/lib/provider-dispatch";
 import { authenticateUnifiedApiRequest } from "@/lib/api-auth";
+import { maybeEnhanceMessages } from "@/lib/web-tools";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,14 @@ export async function POST(req: NextRequest) {
         { status: 400, headers: corsHeaders }
       );
     }
+
+    // Web tools: scrape/search intent -> WEB CONTEXT system message before the
+    // last user message. Never throws; per-request `x-web-tools: off` and the
+    // WEB_TOOLS_MODE=off env switch both disable it.
+    const enhancement = await maybeEnhanceMessages(body.messages, req.headers);
+    body.messages = enhancement.messages;
+    if (enhancement.summary) console.log(`[web-tools] ${enhancement.summary}`);
+    else if (enhancement.note) console.log(`[web-tools] skipped: ${enhancement.note}`);
 
     // Resolve model and fallback chain
     const route = await resolveModelRouteWithConfig(body.model);
